@@ -1,4 +1,7 @@
-#include "cqrs.cpp"
+#include "subroutine.cpp"
+
+Subroutine *subroutines = {
+	new PeripheralEventSubroutine()};
 
 Message supportedMessages[] = {
 	ClearOutputBufferCommand(128),			//0
@@ -28,18 +31,17 @@ Message supportedMessages[] = {
 
 const int MAX_SUPPORTED_MESSAGES = sizeof(supportedMessages) / sizeof(Message);
 const int MAX_BUFFER_SIZE = 64;
+const int NR_OF_SUBROUTINES = 1;
+
 byte COMMUNICATION_BUFFER[MAX_BUFFER_SIZE];
 int currentBufferSize = MAX_BUFFER_SIZE;
-const int microControllerSignature = 1, version = 0;
 
-long currentMillis = 0;
+const int microControllerSignature = 1, version = 0;
 
 void resetBuffer();
 void printASCIIBuffer();
 void writeCommunicationBuffer();
 void processIncommingMessage();
-void checkEvents();
-void checkPeripheralsForEvents();
 
 void setup()
 {
@@ -48,14 +50,29 @@ void setup()
 
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, LOW);
-
-	setupEvents();
 }
 
 void loop()
 {
+	static long currentMillis = 0;
+	static long loopCounter = 0;
+
+	for (int i = 0; i < NR_OF_SUBROUTINES; i++)
+	{
+		if (subroutines[i].shouldExecute(loopCounter, currentMillis))
+		{
+			subroutines[i].prepareForExecution(loopCounter, currentMillis);
+			subroutines[i].execute(COMMUNICATION_BUFFER);
+			if (subroutines[i].hasOutput)
+			{
+				writeCommunicationBuffer();
+				resetBuffer();
+			}
+		}
+	}
+
 	currentMillis = millis();
-	checkEvents();
+	loopCounter++;
 }
 
 void serialEvent()
