@@ -88,6 +88,35 @@ public:
 	}
 };
 
+class TransitionStateCommand : public Command
+{
+public:
+	int desiredState;
+	TransitionStateCommand(char identifier) : Command(identifier) {}
+	TransitionStateCommand(char rawData[]) : Command(rawData[0])
+	{
+		desiredState = Message::convertFromJavaByte(rawData[1]);
+	}
+};
+
+class SetRgbStripColorCommand : public Command
+{
+public:
+	int red, green, blue;
+	int redPin, greenPin, bluePin;
+	SetRgbStripColorCommand(char identifier) : Command(identifier) {}
+	SetRgbStripColorCommand(char rawData[]) : Command(rawData[0])
+	{
+		red = Message::convertFromJavaByte(rawData[1]);
+		green = Message::convertFromJavaByte(rawData[2]);
+		blue = Message::convertFromJavaByte(rawData[3]);
+
+		redPin = Message::convertFromJavaByte(rawData[4]);
+		greenPin = Message::convertFromJavaByte(rawData[5]);
+		bluePin = Message::convertFromJavaByte(rawData[6]);
+	}
+};
+
 ////////////////////////////COMMAND RESPONSES//////////////////////////////
 
 class ClearOutputBufferCommandResponse : public CommandResponse
@@ -207,6 +236,26 @@ public:
 	}
 };
 
+class ModulatePulseWidthCommandResponse : public CommandResponse
+{
+public:
+	int pin;
+	int modulation;
+	ModulatePulseWidthCommandResponse(char identifier) : CommandResponse(identifier) {}
+	ModulatePulseWidthCommandResponse(int pin, int modulation) : CommandResponse(147)
+	{
+		this->pin = pin;
+		this->modulation = modulation;
+	}
+
+	void pack(char output[])
+	{
+		CommandResponse::pack(output);
+		output[1] = Message::convertToJavaByte(pin);
+		output[2] = Message::convertToJavaByte(modulation);
+	}
+};
+
 /////////////////////////////////QUERIES///////////////////////////////////
 
 class DistanceSensorQuery : public Query
@@ -225,6 +274,15 @@ public:
 	AnalogValueQuery(char rawData[]) : Query(rawData[0])
 	{
 		pin = Message::convertFromJavaByte(rawData[1]);
+	}
+};
+
+class MicroControllerQuery : public Query
+{
+public:
+	MicroControllerQuery(char identifier) : Query(identifier) {}
+	MicroControllerQuery(char rawData[]) : Query(rawData[0])
+	{
 	}
 };
 
@@ -260,5 +318,24 @@ public:
 	{
 		QueryResult::pack(output);
 		output[1] = Message::convertToJavaByte(value);
+	}
+};
+
+class MicroControllerQueryResult : public QueryResult
+{
+public:
+	int microControllerSignature, version;
+	MicroControllerQueryResult(char identifier) : QueryResult(identifier) {}
+	MicroControllerQueryResult(int microControllerSignature, int version) : QueryResult(149)
+	{
+		this->microControllerSignature = microControllerSignature;
+		this->version = version;
+	}
+
+	void pack(char output[])
+	{
+		QueryResult::pack(output);
+		output[1] = Message::convertToJavaByte(microControllerSignature);
+		output[2] = Message::convertToJavaByte(version);
 	}
 };

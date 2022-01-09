@@ -1,3 +1,103 @@
+char TRANSLATED_COMMUNICATION_BUFFER[MAX_BUFFER_SIZE];
+
+////just for IntelliSense in vsCode
+// #include "cqrs.cpp"
+// #include "SmartHomeSystem.ino"
+
+class State
+{
+public:
+    int messageIndex;
+    int maxSupportedMessages;
+
+    State(int maxSupportedMessages)
+    {
+        this->maxSupportedMessages = maxSupportedMessages;
+    }
+
+    void calculateMessageIndexFromInput(char input[])
+    {
+        messageIndex = (int)input[0];
+        messageIndex = messageIndex < 0 ? messageIndex + 128 : messageIndex;
+    }
+
+    virtual void processInput(char input[])
+    {
+        //Serial.println("Default implementation");
+    }
+};
+
+class GiveNoResponseState : public State
+{
+public:
+    GiveNoResponseState() : State(MAX_SUPPORTED_MESSAGES) {}
+    void processInput(char input[]) override
+    {
+        State::calculateMessageIndexFromInput(input);
+        switch (messageIndex)
+        {
+        case 14:
+            handleCommand(ModulatePulseWidthCommand(TRANSLATED_COMMUNICATION_BUFFER));
+            break;
+        case 18:
+            handleCommand(TransitionStateCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            writeCommunicationBuffer();
+            break;
+        }
+    }
+};
+
+class GiveResponseState : public State
+{
+public:
+    GiveResponseState() : State(MAX_SUPPORTED_MESSAGES) {}
+    void processInput(char input[]) override
+    {
+        State::calculateMessageIndexFromInput(input);
+
+        switch (messageIndex)
+        {
+        case 0:
+            handleCommand(ClearOutputBufferCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 2:
+            handleQuery(DistanceSensorQuery(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 4:
+            handleCommand(TestCommsCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 6:
+            handleCommand(SetSerialSettingsCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 8:
+            handleCommand(TurnOnBuiltInLedCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 10:
+            handleCommand(TurnOffBuiltInLedCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 14:
+            handleCommand(ModulatePulseWidthCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 16:
+            handleQuery(AnalogValueQuery(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 18:
+            handleCommand(TransitionStateCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 20:
+            handleQuery(MicroControllerQuery(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        case 22:
+            handleCommand(SetRgbStripColorCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
+        }
+
+        writeCommunicationBuffer();
+    }
+};
+
+State *state = new GiveResponseState();
+
 ClearOutputBufferCommandResponse handleCommand(ClearOutputBufferCommand command)
 {
     return ClearOutputBufferCommandResponse();
@@ -44,10 +144,11 @@ TurnOffBuiltInLedCommandResponse handleCommand(TurnOffBuiltInLedCommand command)
     return TurnOffBuiltInLedCommandResponse(LED_BUILTIN);
 }
 
-GenericCommandResponse handleCommand(ModulatePulseWidthCommand command)
+ModulatePulseWidthCommandResponse handleCommand(ModulatePulseWidthCommand command)
 {
     analogWrite(command.pin, command.pulseWidth);
-    return GenericCommandResponse(true);
+
+    return ModulatePulseWidthCommandResponse(command.pin, command.pulseWidth);
 }
 
 AnalogValueQueryResult handleQuery(AnalogValueQuery query)
@@ -57,58 +158,48 @@ AnalogValueQueryResult handleQuery(AnalogValueQuery query)
     return AnalogValueQueryResult(value);
 }
 
-char TRANSLATED_COMMUNICATION_BUFFER[MAX_BUFFER_SIZE];
-
-void translateCommunicationBufferIntoChar();
-
-void handleMessage()
+GenericCommandResponse handleCommand(TransitionStateCommand command)
 {
-    int identifier = COMMUNICATION_BUFFER[0];
-    int index = identifier >= 128 ? identifier - 128 : identifier;
-    if (index >= MAX_SUPPORTED_MESSAGES)
-        return;
+    bool stateTransitionOccurred = false;
 
-    translateCommunicationBufferIntoChar();
-
-    switch (index)
+    switch (command.desiredState)
     {
     case 0:
-        handleCommand(ClearOutputBufferCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+        state = new GiveResponseState();
+        stateTransitionOccurred = true;
         break;
-    case 2:
-        handleQuery(DistanceSensorQuery(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
-        break;
-    case 4:
-        handleCommand(TestCommsCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
-        break;
-    case 6:
-        handleCommand(SetSerialSettingsCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
-        break;
-    case 8:
-        handleCommand(TurnOnBuiltInLedCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
-        break;
-    case 10:
-        handleCommand(TurnOffBuiltInLedCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
-        break;
-    case 14:
-        handleCommand(ModulatePulseWidthCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
-        break;
-    case 16:
-        handleQuery(AnalogValueQuery(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+    case 1:
+        state = new GiveNoResponseState();
+        stateTransitionOccurred = true;
         break;
     }
 
-    writeCommunicationBuffer();
+    return GenericCommandResponse(stateTransitionOccurred);
 }
 
-// typedef CommandResponse (*Handler)(Command command);
+MicroControllerQueryResult handleQuery(MicroControllerQuery query)
+{
+    return MicroControllerQueryResult(microControllerSignature, version);
+}
 
-// Handler handlers[] = {
-//     handleClearOutputBufferCommand};
+GenericCommandResponse handleCommand(SetRgbStripColorCommand command)
+{
+    analogWrite(command.redPin, command.red);
+    analogWrite(command.greenPin, command.green);
+    analogWrite(command.blue, command.blue);
+
+    return GenericCommandResponse(true);
+}
+
+void handleMessage()
+{
+    translateCommunicationBufferIntoChar();
+    state->processInput(TRANSLATED_COMMUNICATION_BUFFER);
+}
 
 void translateCommunicationBufferIntoChar()
 {
-    for (int i = 0; i < MAX_BUFFER_SIZE; i++)
+    for (int i = 0; i < currentBufferSize; i++)
     {
         TRANSLATED_COMMUNICATION_BUFFER[i] = COMMUNICATION_BUFFER[i];
     }
@@ -116,7 +207,7 @@ void translateCommunicationBufferIntoChar()
 
 void translateCommunicationBufferIntoByte()
 {
-    for (int i = 0; i < MAX_BUFFER_SIZE; i++)
+    for (int i = 0; i < currentBufferSize; i++)
     {
         COMMUNICATION_BUFFER[i] = TRANSLATED_COMMUNICATION_BUFFER[i];
     }

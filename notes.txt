@@ -1,0 +1,4 @@
+// typedef CommandResponse (*Handler)(Command command);
+
+// Handler handlers[] = {
+//     handleClearOutputBufferCommand};
