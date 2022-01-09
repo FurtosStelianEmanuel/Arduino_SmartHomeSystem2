@@ -90,6 +90,9 @@ public:
         case 22:
             handleCommand(SetRgbStripColorCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
             break;
+        case 23:
+            handleCommand(SetColorSmoothlyCommand(TRANSLATED_COMMUNICATION_BUFFER)).pack(COMMUNICATION_BUFFER);
+            break;
         }
 
         writeCommunicationBuffer();
@@ -187,6 +190,13 @@ GenericCommandResponse handleCommand(SetRgbStripColorCommand command)
     analogWrite(command.redPin, command.red);
     analogWrite(command.greenPin, command.green);
     analogWrite(command.blue, command.blue);
+
+    return GenericCommandResponse(true);
+}
+
+GenericCommandResponse handleCommand(SetColorSmoothlyCommand command)
+{
+    colorTransitionSubroutine->setup(command);
 
     return GenericCommandResponse(true);
 }

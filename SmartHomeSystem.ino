@@ -1,7 +1,10 @@
 #include "subroutine.cpp"
 
-Subroutine *subroutines = {
-	new PeripheralEventSubroutine()};
+const int NR_OF_SUBROUTINES = 2;
+typedef Subroutine *SubroutinePointer;
+SubroutinePointer *subroutines = new SubroutinePointer[NR_OF_SUBROUTINES];
+PeripheralEventSubroutine *peripheralsEventSubroutine = new PeripheralEventSubroutine();
+ColorTransitionSubroutine *colorTransitionSubroutine = new ColorTransitionSubroutine();
 
 Message supportedMessages[] = {
 	ClearOutputBufferCommand(128),			//0
@@ -26,12 +29,13 @@ Message supportedMessages[] = {
 	ModulatePulseWidthCommandResponse(147), //19
 	MicroControllerQuery(148),				//20
 	MicroControllerQueryResult(149),		//21
-	SetRgbStripColorCommand(150)			//22
+	SetRgbStripColorCommand(150),			//22
+	SetColorSmoothlyCommand(151),           //23
+	StripTransitionedToColorCommand(152)   //24
 };
 
 const int MAX_SUPPORTED_MESSAGES = sizeof(supportedMessages) / sizeof(Message);
 const int MAX_BUFFER_SIZE = 64;
-const int NR_OF_SUBROUTINES = 1;
 
 byte COMMUNICATION_BUFFER[MAX_BUFFER_SIZE];
 int currentBufferSize = MAX_BUFFER_SIZE;
@@ -50,6 +54,9 @@ void setup()
 
 	pinMode(LED_BUILTIN, OUTPUT);
 	digitalWrite(LED_BUILTIN, LOW);
+
+	subroutines[0] = peripheralsEventSubroutine;
+	subroutines[1] = colorTransitionSubroutine;
 }
 
 void loop()
@@ -59,11 +66,11 @@ void loop()
 
 	for (int i = 0; i < NR_OF_SUBROUTINES; i++)
 	{
-		if (subroutines[i].shouldExecute(loopCounter, currentMillis))
+		if (subroutines[i]->shouldExecute(loopCounter, currentMillis))
 		{
-			subroutines[i].prepareForExecution(loopCounter, currentMillis);
-			subroutines[i].execute(COMMUNICATION_BUFFER);
-			if (subroutines[i].hasOutput)
+			subroutines[i]->prepareForExecution(loopCounter, currentMillis);
+			subroutines[i]->execute(COMMUNICATION_BUFFER);
+			if (subroutines[i]->hasOutput)
 			{
 				writeCommunicationBuffer();
 				resetBuffer();

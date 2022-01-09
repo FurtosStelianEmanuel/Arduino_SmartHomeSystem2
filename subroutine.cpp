@@ -7,6 +7,12 @@ enum ExecutionMode
 	LOOP_COUNTER_BASED
 };
 
+enum StripType
+{
+	RGB = 0,
+	ARGB = 1
+};
+
 class Subroutine
 {
 protected:
@@ -17,9 +23,13 @@ protected:
 
 public:
 	bool hasOutput = false;
+	bool isBlocked = false;
 
 	bool shouldExecute(long loopCounter, long currentMillis)
 	{
+		if (isBlocked)
+			return false;
+
 		if (executionMode == TIME_BASED)
 		{
 			return currentMillis - lastRun >= period;
@@ -50,6 +60,19 @@ public:
 
 class PeripheralEventSubroutine : public Subroutine
 {
+public:
+	PeripheralEventSubroutine()
+	{
+		period = 1000;
+		pinMode(doorPin, INPUT);
+	}
+
+	void execute(char *output) override
+	{
+		Subroutine::execute(output);
+		checkDoor(output);
+	}
+
 private:
 	int doorPin = 3;
 	void checkDoor(char *output)
@@ -61,7 +84,7 @@ private:
 			if (doorClosed)
 			{
 				hasOutput = true;
-				output[0] = 140;
+				((Command *)new DoorClosedPeripheralCommand(140))->pack(output);
 			}
 
 			doorClosed = false;
@@ -71,22 +94,92 @@ private:
 			if (!doorClosed)
 			{
 				hasOutput = true;
-				output[0] = 141;
+				((Command *)new DoorClosedPeripheralCommand(141))->pack(output);
 			}
 
 			doorClosed = true;
 		}
 	}
+};
 
+class ColorTransitionSubroutine : public Subroutine
+{
 public:
-	PeripheralEventSubroutine()
+	StripType stripType;
+	int argbDataPin;
+	int redPin, greenPin, bluePin;
+
+	int increment = 1;
+
+	int currentRed, currentGreen, currentBlue;
+	int targetRed, targetGreen, targetBlue;
+
+	ColorTransitionSubroutine()
 	{
-		period = 1000;
-		pinMode(doorPin, INPUT);
+		executionMode = LOOP_COUNTER_BASED;
+		period = 100;
+		isBlocked = true;
 	}
+
 	void execute(char *output) override
 	{
 		Subroutine::execute(output);
-		checkDoor(output);
+		rgbStripTransition(output);
+	}
+
+	void setup(SetColorSmoothlyCommand command)
+	{
+		bluePin = command.bluePin;
+		redPin = command.redPin;
+		greenPin = command.greenPin;
+		currentRed = command.currentRed;
+		currentBlue = command.currentBlue;
+		currentGreen = command.currentGreen;
+		targetRed = command.targetRed;
+		targetGreen = command.targetGreen;
+		targetBlue = command.targetBlue;
+		stripType = (StripType)command.stripType;
+		isBlocked = false;
+	}
+
+private:
+	void rgbStripTransition(char *output)
+	{
+		if (stripType != RGB)
+			return;
+
+		int dRed = getDirectionToColor(currentRed, targetRed);
+		int dGreen = getDirectionToColor(currentGreen, targetGreen);
+		int dBlue = getDirectionToColor(currentBlue, targetBlue);
+
+		currentRed += dRed * increment;
+		currentGreen += dGreen * increment;
+		currentBlue += dBlue * increment;
+
+		analogWrite(redPin, currentRed);
+		analogWrite(greenPin, currentGreen);
+		analogWrite(bluePin, currentBlue);
+
+		if (dRed == 0 && dGreen == 0 && dBlue == 0)
+		{
+			StripTransitionedToColorCommand *command = new StripTransitionedToColorCommand(152);
+			command->red = currentRed;
+			command->green = currentGreen;
+			command->blue = currentBlue;
+			command->redPin = redPin;
+			command->greenPin = greenPin;
+			command->bluePin = bluePin;
+
+			command->pack(output);
+
+			hasOutput = true;
+			isBlocked = true;
+		}
+	}
+
+	int getDirectionToColor(int current, int target)
+	{
+		return current < target ? 1 : current == target ? 0
+														: -1;
 	}
 };

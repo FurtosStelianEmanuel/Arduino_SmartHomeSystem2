@@ -117,6 +117,54 @@ public:
 	}
 };
 
+class SetColorSmoothlyCommand : public Command
+{
+public:
+	int stripType;
+	int argbDataPin;
+	int redPin, greenPin, bluePin;
+	int increment;
+	int currentRed, currentGreen, currentBlue;
+	int targetRed, targetGreen, targetBlue;
+	SetColorSmoothlyCommand(char identifier) : Command(identifier) {}
+	SetColorSmoothlyCommand(char rawData[]) : Command(rawData[0])
+	{
+		stripType = Message::convertFromJavaByte(rawData[1]);
+		argbDataPin = Message::convertFromJavaByte(rawData[2]);
+		redPin = Message::convertFromJavaByte(rawData[3]);
+		greenPin = Message::convertFromJavaByte(rawData[4]);
+		bluePin = Message::convertFromJavaByte(rawData[5]);
+		increment = Message::convertFromJavaByte(rawData[6]);
+		currentRed = Message::convertFromJavaByte(rawData[7]);
+		currentGreen = Message::convertFromJavaByte(rawData[8]);
+		currentBlue = Message::convertFromJavaByte(rawData[9]);
+		targetRed = Message::convertFromJavaByte(rawData[10]);
+		targetGreen = Message::convertFromJavaByte(rawData[11]);
+		targetBlue = Message::convertFromJavaByte(rawData[12]);
+	}
+};
+
+class StripTransitionedToColorCommand : public Command
+{
+public:
+	int red, green, blue;
+	int redPin, greenPin, bluePin;
+	StripTransitionedToColorCommand(char identifier) : Command(identifier) {}
+	StripTransitionedToColorCommand(char rawData[]) : Command(rawData[0]) {}
+
+	void pack(char output[])
+	{
+		Command::pack(output);
+		output[1] = Message::convertToJavaByte(red);
+		output[2] = Message::convertToJavaByte(green);
+		output[3] = Message::convertToJavaByte(blue);
+
+		output[4] = Message::convertToJavaByte(redPin);
+		output[5] = Message::convertToJavaByte(greenPin);
+		output[6] = Message::convertToJavaByte(bluePin);
+	}
+};
+
 ////////////////////////////COMMAND RESPONSES//////////////////////////////
 
 class ClearOutputBufferCommandResponse : public CommandResponse
