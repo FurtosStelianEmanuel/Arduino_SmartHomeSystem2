@@ -1,30 +1,36 @@
 #include "cqrs.cpp"
 
 Message supportedMessages[] = {
-	ClearOutputBufferCommand(128),
-	ClearOutputBufferCommandResponse(129),
-	DistanceSensorQuery(130),
-	DistanceSensorQueryResult(131),
-	TestCommsCommand(132),
-	TestCommsCommandResponse(133),
-	SetSerialSettingsCommand(134),
-	SetSerialSettingsCommandResponse(135),
-	TurnOnBuiltInLedCommand(136),
-	TurnOnBuiltInLedCommandResponse(137),
-	TurnOffBuiltInLedCommand(138),
-	TurnOffBuiltInLedCommandResponse(139),
-	DoorOpenedPeripheralCommand(140),
-	DoorClosedPeripheralCommand(141),
-	ModulatePulseWidthCommand(142),
-	GenericCommandResponse(143),
-	AnalogValueQuery(144),
-	AnalogValueQueryResult(145)
-	};
+	ClearOutputBufferCommand(128),			//0
+	ClearOutputBufferCommandResponse(129),	//1
+	DistanceSensorQuery(130),				//2
+	DistanceSensorQueryResult(131),			//3
+	TestCommsCommand(132),					//4
+	TestCommsCommandResponse(133),			//5
+	SetSerialSettingsCommand(134),			//6
+	SetSerialSettingsCommandResponse(135),	//7
+	TurnOnBuiltInLedCommand(136),			//8
+	TurnOnBuiltInLedCommandResponse(137),	//9
+	TurnOffBuiltInLedCommand(138),			//10
+	TurnOffBuiltInLedCommandResponse(139),	//11
+	DoorOpenedPeripheralCommand(140),		//12
+	DoorClosedPeripheralCommand(141),		//13
+	ModulatePulseWidthCommand(142),			//14
+	GenericCommandResponse(143),			//15
+	AnalogValueQuery(144),					//16
+	AnalogValueQueryResult(145),			//17
+	TransitionStateCommand(146),			//18
+	ModulatePulseWidthCommandResponse(147), //19
+	MicroControllerQuery(148),				//20
+	MicroControllerQueryResult(149),		//21
+	SetRgbStripColorCommand(150)			//22
+};
 
 const int MAX_SUPPORTED_MESSAGES = sizeof(supportedMessages) / sizeof(Message);
 const int MAX_BUFFER_SIZE = 64;
 byte COMMUNICATION_BUFFER[MAX_BUFFER_SIZE];
 int currentBufferSize = MAX_BUFFER_SIZE;
+const int microControllerSignature = 1, version = 0;
 
 long currentMillis = 0;
 
@@ -69,7 +75,7 @@ void resetBuffer()
 
 void printASCIIBuffer()
 {
-	for (int i = 0; i < MAX_BUFFER_SIZE; i++)
+	for (int i = 0; i < currentBufferSize; i++)
 	{
 		if (i % 10 == 0 && i != 0)
 			Serial.println();
