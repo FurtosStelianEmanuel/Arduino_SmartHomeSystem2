@@ -129,16 +129,18 @@ public:
 
 	void setup(SetColorSmoothlyCommand command)
 	{
-		bluePin = command.bluePin;
 		redPin = command.redPin;
 		greenPin = command.greenPin;
+		bluePin = command.bluePin;
 		currentRed = command.currentRed;
-		currentBlue = command.currentBlue;
 		currentGreen = command.currentGreen;
+		currentBlue = command.currentBlue;
 		targetRed = command.targetRed;
 		targetGreen = command.targetGreen;
 		targetBlue = command.targetBlue;
 		stripType = (StripType)command.stripType;
+		increment = command.increment;
+
 		isBlocked = false;
 	}
 
@@ -155,6 +157,10 @@ private:
 		currentRed += dRed * increment;
 		currentGreen += dGreen * increment;
 		currentBlue += dBlue * increment;
+
+		currentRed = boundToAnalogWriteValue(currentRed);
+		currentGreen = boundToAnalogWriteValue(currentGreen);
+		currentBlue = boundToAnalogWriteValue(currentBlue);
 
 		analogWrite(redPin, currentRed);
 		analogWrite(greenPin, currentGreen);
@@ -181,5 +187,11 @@ private:
 	{
 		return current < target ? 1 : current == target ? 0
 														: -1;
+	}
+
+	int boundToAnalogWriteValue(int value)
+	{
+		return value < 0 ? 0 : value > 255 ? 255
+										   : value;
 	}
 };
