@@ -126,6 +126,8 @@ public:
 	int increment;
 	int currentRed, currentGreen, currentBlue;
 	int targetRed, targetGreen, targetBlue;
+	bool takeCurrentValuesFromSubRoutine;
+
 	SetColorSmoothlyCommand(char identifier) : Command(identifier) {}
 	SetColorSmoothlyCommand(char rawData[]) : Command(rawData[0])
 	{
@@ -141,6 +143,7 @@ public:
 		targetRed = Message::convertFromJavaByte(rawData[10]);
 		targetGreen = Message::convertFromJavaByte(rawData[11]);
 		targetBlue = Message::convertFromJavaByte(rawData[12]);
+		takeCurrentValuesFromSubRoutine = Message::convertFromJavaByte(rawData[13]);
 	}
 };
 

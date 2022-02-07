@@ -132,14 +132,18 @@ public:
 		redPin = command.redPin;
 		greenPin = command.greenPin;
 		bluePin = command.bluePin;
-		currentRed = command.currentRed;
-		currentGreen = command.currentGreen;
-		currentBlue = command.currentBlue;
 		targetRed = command.targetRed;
 		targetGreen = command.targetGreen;
 		targetBlue = command.targetBlue;
 		stripType = (StripType)command.stripType;
 		increment = command.increment;
+
+		if (!command.takeCurrentValuesFromSubRoutine)
+		{
+			currentRed = command.currentRed;
+			currentGreen = command.currentGreen;
+			currentBlue = command.currentBlue;
+		}
 
 		isBlocked = false;
 	}
@@ -158,9 +162,9 @@ private:
 		currentGreen += dGreen * increment;
 		currentBlue += dBlue * increment;
 
-		currentRed = boundToAnalogWriteValue(currentRed);
-		currentGreen = boundToAnalogWriteValue(currentGreen);
-		currentBlue = boundToAnalogWriteValue(currentBlue);
+		currentRed = boundToMaximumValue(currentRed, 255);
+		currentGreen = boundToMaximumValue(currentGreen, 255);
+		currentBlue = boundToMaximumValue(currentBlue, 255);
 
 		analogWrite(redPin, currentRed);
 		analogWrite(greenPin, currentGreen);
@@ -189,9 +193,9 @@ private:
 														: -1;
 	}
 
-	int boundToAnalogWriteValue(int value)
+	int boundToMaximumValue(int value, int maximumValue)
 	{
-		return value < 0 ? 0 : value > 255 ? 255
-										   : value;
+		return value < 0 ? 0 : value > maximumValue ? maximumValue
+													: value;
 	}
 };
